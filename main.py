@@ -11,7 +11,7 @@ CHANNEL_ID = "UCOB62fKRT7b73X7tRxMuN2g"  # 🔹 감지할 YouTube 채널 ID 입�
 WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # 🔹 Make.com Webhook URL 입력
 
 # Polling 주기 (초 단위)
-POLL_INTERVAL = 3600  # 5분마다 실행
+POLL_INTERVAL = 6*3600  # 6시간마다 실행
 
 # 가장 최근의 영상 ID 저장
 latest_video_id = None
