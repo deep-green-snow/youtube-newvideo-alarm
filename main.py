@@ -103,6 +103,10 @@ def start_polling():
 def home():
     return jsonify({"message": "YouTube Polling Server Running"})
 
+@app.route('/latest_video_id')
+def latest_video_id():
+    return jsonify(LATEST_VIDEO_ID)
+
 @app.route('/poll', methods=['GET'])
 def manual_poll():
     """ 수동으로 Polling 실행 (테스트용) """
