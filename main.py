@@ -4,53 +4,94 @@ from flask import Flask, jsonify, request
 import threading
 
 # YouTube API 정보
-API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # 🔹 YouTube API Key 입력
-CHANNEL_ID = "UCOB62fKRT7b73X7tRxMuN2g"  # 🔹 감지할 YouTube 채널 ID 입력
+API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # YouTube API Key
+# YouTube Channel ID 
+CHANNELS = {
+    "UCOB62fKRT7b73X7tRxMuN2g" : "박종훈의 지식한방",
+    "UCpqD9_OJNtF6suPpi6mOQCQ" : "월가아재의 과학적 투자",
+    "UCg7O-KGVGFOauZ_8XQJFP0g" : "아세안패스 : 숫자로 보는 기회",
+    "UCIUni4ScRp4mqPXsxy62L5w" : "언더스탠딩 : 세상의 모든 지식",
+    "UC4noqcTx0lqmKTv3lrrjtBw" : "ASPIM Research",
+    "UCznImSIaxZR7fdLCICLdgaQ" : "전인구경제연구소",   
+    "UCgF5fyJGpkScPHLmhIrlUHg" : "에릭의 거장연구소",
+    "UCxvdCnvGODDyuvnELnLkQWw" : "이효석아카데미",
+    "UCD9vzSxZ69pjcnf8hgCQXVQ" : "채부심 - 채상욱의 부동산 심부름센터",
+    "UCKTMvIu9a4VGSrpWy-8bUrQ" : "내일은 투자왕 - 김단테"
+  }
 
 # Make.com Webhook URL
-WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # 🔹 Make.com Webhook URL 입력
+WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # Make.com Webhook URL
 
-# Polling 주기 (초 단위)
-POLL_INTERVAL = 6*3600  # 6시간마다 실행
+# Polling Period (sec)
+POLL_INTERVAL = 3600  # every 1 hr
 
-# 가장 최근의 영상 ID 저장
-latest_video_id = None
+# Keep the latest video id 
+LATEST_VIDEO_ID = {
+    "UCOB62fKRT7b73X7tRxMuN2g" : None, 
+    "UCpqD9_OJNtF6suPpi6mOQCQ" : None, 
+    "UCg7O-KGVGFOauZ_8XQJFP0g" : None, 
+    "UCIUni4ScRp4mqPXsxy62L5w" : None, 
+    "UC4noqcTx0lqmKTv3lrrjtBw" : None, 
+    "UCznImSIaxZR7fdLCICLdgaQ" : None,
+    "UCgF5fyJGpkScPHLmhIrlUHg" : None, 
+    "UCxvdCnvGODDyuvnELnLkQWw" : None,
+    "UCD9vzSxZ69pjcnf8hgCQXVQ" : None, 
+    "UCKTMvIu9a4VGSrpWy-8bUrQ" : None, 
+  }  
 
 app = Flask(__name__)
 
 def get_latest_video():
-    """ YouTube API를 사용하여 최신 영상 ID 조회 """
-    url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={CHANNEL_ID}&part=snippet,id&order=date&maxResults=1"
-    response = requests.get(url).json()
+    global LATEST_VIDEO_ID
+    latest_videos = []    
+    for channel_id, channel_name in CHANNELS.items():
+        url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet,id&order=date&maxResults=1"
+        try:
+            response = requests.get(url).json()
+        except Exception as e:
+            print(f'[ERROR] {e} (channel : {channel_name})')
     
-    if "items" in response:
-        video_id = response["items"][0]["id"].get("videoId")
-        video_title = response["items"][0]["snippet"].get("title")
-        publishTime = response["items"][0]["snippet"].get("publishTime")
-        return video_id, video_title, publishTime
-    return None
+        if "items" in response:
+            video_id = response["items"][0]["id"].get("videoId")
+            video_title = response["items"][0]["snippet"].get("title")
+            publishTime = response["items"][0]["snippet"].get("publishTime")
+            
+            if(LATEST_VIDEO_ID[channel_id] is None or 
+               (LATEST_VIDEO_ID[channel_id] is not None and LATEST_VIDEO_ID[channel_id] != video_id)):
+                print(f"[New Video Detected] {channel_name}")
+                LATEST_VIDEO_ID[channel_id] = video_id # update latest video id
+                latest_videos.append({
+                        'channel_id' : channel_id,
+                        'channel_name' : channel_name,
+                        'video_id' : video_id,
+                        'video_title' : video_title,
+                        'publishTime' : publishTime,
+                        "url": f"https://www.youtube.com/watch?v={video_id}"
+                    })
+                
+    return latest_videos
 
-def send_webhook(video_id, video_title, publishTime):
+def send_webhook(items):
     """ Make.com Webhook에 새로운 영상 정보 전송 """
     payload = {
-        "video_id": video_id,
-        "video_title" : video_title,
-        "publishTime" : publishTime,
-        "channel_id": CHANNEL_ID,
-        "url": f"https://www.youtube.com/watch?v={video_id}"
+        "items" : items
     }
     response = requests.post(WEBHOOK_URL, json=payload)
     print(f"[Webhook Sent] {payload} | Response: {response.status_code}")
 
 def check_new_video():
-    """ 새로운 영상이 올라오면 Webhook 전송 """
-    global latest_video_id
-    video_id, video_title, publishTime = get_latest_video()
-    
-    if video_id and video_id != latest_video_id:
-        latest_video_id = video_id
-        print(f"[New Video Detected] {video_id}")
-        send_webhook(video_id, video_title, publishTime)
+    """ Send Webhook when new videos are uploaded  """
+    latest_videos = get_latest_video()
+
+    items = []
+    for video in latest_videos:
+        items.append(video)
+
+    if items:
+        print(f'[INFO] {len(items)} new videos are found.')
+        send_webhook(items)
+    else:
+        print('[INFO] No new videos.')
 
 def start_polling():
     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
