@@ -87,7 +87,7 @@ def check_new_video():
     for video in latest_videos:
         items.append(video)
 
-    if items:
+    if len(items) > 0:
         print(f'[INFO] {len(items)} new videos are found.')
         send_webhook(items)
     else:
