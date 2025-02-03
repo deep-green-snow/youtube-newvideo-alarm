@@ -95,17 +95,17 @@ def check_new_video():
     else:
         print('[INFO] No new videos.')
 
-def start_polling():
-    """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
-    while True:
-        check_new_video()
-        time.sleep(POLL_INTERVAL)  # 작은 간격으로 sleep (1분)
+# def start_polling():
+#     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
+#     while True:
+#         check_new_video()
+#         time.sleep(POLL_INTERVAL)  # 작은 간격으로 sleep (1분)
 
-@app.before_request
-def activate_polling():
-    polling_thread = threading.Thread(target=start_polling, daemon=True)
-    polling_thread.start()
-    print("Polling thread started!")
+# @app.before_request
+# def activate_polling():
+#     polling_thread = threading.Thread(target=start_polling, daemon=True)
+#     polling_thread.start()
+#     print("Polling thread started!")
 
 @app.route('/')
 def home():
