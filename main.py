@@ -27,9 +27,6 @@ WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # Ma
 # Polling Period (sec)
 POLL_INTERVAL = 3600  # every 1 hr
 
-# Stop Event
-STOP_EVENT = threading.Event()
-
 # Keep the latest video id 
 LATEST_VIDEO_ID = {
     "UCOB62fKRT7b73X7tRxMuN2g" : None, 
@@ -100,23 +97,16 @@ def check_new_video():
 
 def start_polling():
     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
-    interval = 1  # 1초 간격으로 체크
-    elapsed_time = 0
-    while not STOP_EVENT.is_set():
-        if elapsed_time % POLL_INTERVAL == 0:
-            check_new_video()
-            
-        time.sleep(interval)  # 작은 간격으로 sleep (1분)
-        elapsed_time += interval
+    while True:
+        check_new_video()
+        time.sleep(POLL_INTERVAL)  # 작은 간격으로 sleep (1분)
 
 @app.before_request
 def activate_polling():
-    if not hasattr(app, "polling_started"):
-        app.polling_started = True  # 중복 실행 방지
-        polling_thread = threading.Thread(target=start_polling, daemon=True)
-        polling_thread.start()
-        print("Polling thread started!")
-    
+    polling_thread = threading.Thread(target=start_polling, daemon=True)
+    polling_thread.start()
+    print("Polling thread started!")
+
 @app.route('/')
 def home():
     return jsonify({"message": "YouTube Polling Server Running"})
@@ -138,4 +128,4 @@ def health_check():
 
 if __name__ == "__main__":
     # Flask 서버 실행
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000)
