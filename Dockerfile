@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the server
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "main:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers=4", "main:app"]
