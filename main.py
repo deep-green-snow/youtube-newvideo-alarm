@@ -121,9 +121,9 @@ def manual_poll():
     check_new_video()
     return jsonify({"status": "Checked"})
 
-@app.route('/health')
-def health_check():
-    return jsonify({"status": "healthy"}), 200
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
 
 
 if __name__ == "__main__":
