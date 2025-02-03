@@ -2,6 +2,7 @@ import requests
 import time
 from flask import Flask, jsonify, request
 import threading
+import atexit
 
 # YouTube API 정보
 API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # YouTube API Key
@@ -24,6 +25,9 @@ WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # Ma
 
 # Polling Period (sec)
 POLL_INTERVAL = 3600  # every 1 hr
+
+# Stop Event
+STOP_EVENT = threading.Event()
 
 # Keep the latest video id 
 LATEST_VIDEO_ID = {
@@ -95,7 +99,7 @@ def check_new_video():
 
 def start_polling():
     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
-    while True:
+    while not STOP_EVENT.is_set():
         check_new_video()
         time.sleep(POLL_INTERVAL)
 
@@ -115,8 +119,16 @@ def manual_poll():
 
 if __name__ == "__main__":
     # 백그라운드에서 Polling 실행
-    polling_thread = threading.Thread(target=start_polling, daemon=True)
+    polling_thread = threading.Thread(target=start_polling, daemon=False)
     polling_thread.start()
+    
+    def stop_polling():
+        print("Polling 스레드 종료 중...")
+        STOP_EVENT.set()
+        polling_thread.join()
+        print("Polling 스레드가 종료되었습니다.")
+    
+    atexit.register(stop_polling)
     
     # Flask 서버 실행
     app.run(host="0.0.0.0", port=5000)
