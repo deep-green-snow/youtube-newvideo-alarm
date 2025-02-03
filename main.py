@@ -104,6 +104,14 @@ def start_polling():
         check_new_video()
         time.sleep(POLL_INTERVAL)
 
+@app.before_request
+def activate_polling():
+    if not hasattr(app, "polling_started"):
+        app.polling_started = True  # 중복 실행 방지
+        polling_thread = threading.Thread(target=start_polling, daemon=True)
+        polling_thread.start()
+        print("Polling thread started!")
+    
 @app.route('/')
 def home():
     return jsonify({"message": "YouTube Polling Server Running"})
@@ -117,11 +125,6 @@ def manual_poll():
     """ 수동으로 Polling 실행 (테스트용) """
     check_new_video()
     return jsonify({"status": "Checked"})
-
-@app.before_first_request
-def activate_polling():
-    polling_thread = threading.Thread(target=start_polling, daemon=True)
-    polling_thread.start()
 
 if __name__ == "__main__":
     # Flask 서버 실행
