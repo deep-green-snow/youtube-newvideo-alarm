@@ -3,6 +3,7 @@ import time
 from flask import Flask, jsonify, request
 import threading
 import atexit
+import os
 
 # YouTube API 정보
 API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # YouTube API Key
@@ -117,18 +118,12 @@ def manual_poll():
     check_new_video()
     return jsonify({"status": "Checked"})
 
-if __name__ == "__main__":
-    # 백그라운드에서 Polling 실행
-    polling_thread = threading.Thread(target=start_polling, daemon=False)
+@app.before_first_request
+def activate_polling():
+    polling_thread = threading.Thread(target=start_polling, daemon=True)
     polling_thread.start()
-    
-    def stop_polling():
-        print("Polling 스레드 종료 중...")
-        STOP_EVENT.set()
-        polling_thread.join()
-        print("Polling 스레드가 종료되었습니다.")
-    
-    atexit.register(stop_polling)
-    
+
+if __name__ == "__main__":
     # Flask 서버 실행
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=5000, debug=False)
