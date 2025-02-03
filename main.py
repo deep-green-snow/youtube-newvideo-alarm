@@ -126,6 +126,11 @@ def manual_poll():
     check_new_video()
     return jsonify({"status": "Checked"})
 
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+
 if __name__ == "__main__":
     # Flask 서버 실행
     app.run(host="0.0.0.0", port=5000, debug=False)
