@@ -100,9 +100,14 @@ def check_new_video():
 
 def start_polling():
     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
+    interval = 1  # 1초 간격으로 체크
+    elapsed_time = 0
     while not STOP_EVENT.is_set():
-        check_new_video()
-        time.sleep(POLL_INTERVAL)
+        if elapsed_time % POLL_INTERVAL == 0:
+            check_new_video()
+            
+        time.sleep(interval)  # 작은 간격으로 sleep (1분)
+        elapsed_time += interval
 
 @app.before_request
 def activate_polling():
