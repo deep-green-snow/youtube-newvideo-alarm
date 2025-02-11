@@ -22,10 +22,25 @@ CHANNELS = {
     "UCKTMvIu9a4VGSrpWy-8bUrQ" : "내일은 투자왕 - 김단테"
   }
 
+# Keep the latest video id 
+LATEST_VIDEO_ID = {
+    "UCOB62fKRT7b73X7tRxMuN2g" : None, 
+    "UCpqD9_OJNtF6suPpi6mOQCQ" : None, 
+    "UCg7O-KGVGFOauZ_8XQJFP0g" : None, 
+    "UCIUni4ScRp4mqPXsxy62L5w" : None, 
+    "UC4noqcTx0lqmKTv3lrrjtBw" : None, 
+    "UCznImSIaxZR7fdLCICLdgaQ" : None,
+    "UCgF5fyJGpkScPHLmhIrlUHg" : None, 
+    "UCxvdCnvGODDyuvnELnLkQWw" : None,
+    "UCD9vzSxZ69pjcnf8hgCQXVQ" : None, 
+    "UCKTMvIu9a4VGSrpWy-8bUrQ" : None, 
+  }  
+
 app = Flask(__name__)
 
-def get_latest_videos():
-    latest_videos = []
+def get_latest_video():
+    global LATEST_VIDEO_ID
+    latest_videos = []    
     for channel_id, channel_name in CHANNELS.items():
         url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet,id&order=date&maxResults=1"
         try:
@@ -38,7 +53,11 @@ def get_latest_videos():
             video_title = response["items"][0]["snippet"].get("title")
             publishTime = response["items"][0]["snippet"].get("publishTime")
             
-            latest_videos.append({
+            if(LATEST_VIDEO_ID[channel_id] is None or 
+               (LATEST_VIDEO_ID[channel_id] is not None and LATEST_VIDEO_ID[channel_id] != video_id)):
+                print(f"[New Video Detected] {channel_name}")
+                LATEST_VIDEO_ID[channel_id] = video_id # update latest video id
+                latest_videos.append({
                         'channel_id' : channel_id,
                         'channel_name' : channel_name,
                         'video_id' : video_id,
@@ -53,14 +72,18 @@ def get_latest_videos():
 def home():
     return jsonify({"message": "RUNNING", "status" : HTTPStatus.OK})
 
+@app.route('/latest_video_id')
+def latest_video_id():
+    return jsonify(LATEST_VIDEO_ID)
+
 @app.route("/health")
 def health():
     return jsonify({"message": "OK", "status": HTTPStatus.OK})
 
 @app.route('/get_new_videos', methods=['GET'])
 def get_new_videos():
-    latest_videos = get_latest_videos()
-    return jsonify({"data" : latest_videos,"status": HTTPStatus.OK})
+    latest_viedos = get_latest_video()
+    return jsonify({"data" : latest_viedos, "status": HTTPStatus.OK})
 
 if __name__ == "__main__":
     # Flask 서버 실행
