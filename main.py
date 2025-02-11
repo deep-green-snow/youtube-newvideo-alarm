@@ -1,5 +1,6 @@
 import requests
 import time
+from http import HTTPStatus
 from flask import Flask, jsonify, request
 import threading
 import atexit
@@ -21,31 +22,10 @@ CHANNELS = {
     "UCKTMvIu9a4VGSrpWy-8bUrQ" : "내일은 투자왕 - 김단테"
   }
 
-# Make.com Webhook URL
-WEBHOOK_URL = "https://hook.us2.make.com/n5an8aok5383arxggx02krkuex7mxshs"  # Make.com Webhook URL
-
-# Polling Period (sec)
-POLL_INTERVAL = 3600  # every 1 hr
-
-# Keep the latest video id 
-LATEST_VIDEO_ID = {
-    "UCOB62fKRT7b73X7tRxMuN2g" : None, 
-    "UCpqD9_OJNtF6suPpi6mOQCQ" : None, 
-    "UCg7O-KGVGFOauZ_8XQJFP0g" : None, 
-    "UCIUni4ScRp4mqPXsxy62L5w" : None, 
-    "UC4noqcTx0lqmKTv3lrrjtBw" : None, 
-    "UCznImSIaxZR7fdLCICLdgaQ" : None,
-    "UCgF5fyJGpkScPHLmhIrlUHg" : None, 
-    "UCxvdCnvGODDyuvnELnLkQWw" : None,
-    "UCD9vzSxZ69pjcnf8hgCQXVQ" : None, 
-    "UCKTMvIu9a4VGSrpWy-8bUrQ" : None, 
-  }  
-
 app = Flask(__name__)
 
-def get_latest_video():
-    global LATEST_VIDEO_ID
-    latest_videos = []    
+def get_latest_videos():
+    latest_videos = []
     for channel_id, channel_name in CHANNELS.items():
         url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet,id&order=date&maxResults=1"
         try:
@@ -58,11 +38,7 @@ def get_latest_video():
             video_title = response["items"][0]["snippet"].get("title")
             publishTime = response["items"][0]["snippet"].get("publishTime")
             
-            if(LATEST_VIDEO_ID[channel_id] is None or 
-               (LATEST_VIDEO_ID[channel_id] is not None and LATEST_VIDEO_ID[channel_id] != video_id)):
-                print(f"[New Video Detected] {channel_name}")
-                LATEST_VIDEO_ID[channel_id] = video_id # update latest video id
-                latest_videos.append({
+            latest_videos.append({
                         'channel_id' : channel_id,
                         'channel_name' : channel_name,
                         'video_id' : video_id,
@@ -73,58 +49,18 @@ def get_latest_video():
                 
     return latest_videos
 
-def send_webhook(items):
-    """ Make.com Webhook에 새로운 영상 정보 전송 """
-    payload = {
-        "items" : items
-    }
-    response = requests.post(WEBHOOK_URL, json=payload)
-    print(f"[Webhook Sent] {payload} | Response: {response.status_code}")
-
-def check_new_video():
-    """ Send Webhook when new videos are uploaded  """
-    latest_videos = get_latest_video()
-
-    items = []
-    for video in latest_videos:
-        items.append(video)
-
-    if len(items) > 0:
-        print(f'[INFO] {len(items)} new videos are found.')
-        send_webhook(items)
-    else:
-        print('[INFO] No new videos.')
-
-# def start_polling():
-#     """ 주기적으로 YouTube 채널을 감시하는 백그라운드 작업 """
-#     while True:
-#         check_new_video()
-#         time.sleep(POLL_INTERVAL)  # 작은 간격으로 sleep (1분)
-
-# @app.before_request
-# def activate_polling():
-#     polling_thread = threading.Thread(target=start_polling, daemon=True)
-#     polling_thread.start()
-#     print("Polling thread started!")
-
 @app.route('/')
 def home():
-    return jsonify({"message": "YouTube Polling Server Running"})
-
-@app.route('/latest_video_id')
-def latest_video_id():
-    return jsonify(LATEST_VIDEO_ID)
-
-@app.route('/poll', methods=['GET'])
-def manual_poll():
-    """ 수동으로 Polling 실행 (테스트용) """
-    check_new_video()
-    return jsonify({"status": "Checked"})
+    return jsonify({"message": "RUNNING", "status" : HTTPStatus.OK})
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"message": "OK", "status": HTTPStatus.OK})
 
+@app.route('/get_new_videos', methods=['GET'])
+def get_new_videos():
+    latest_videos = get_latest_videos()
+    return jsonify({"data" : latest_videos,"status": HTTPStatus.OK})
 
 if __name__ == "__main__":
     # Flask 서버 실행
