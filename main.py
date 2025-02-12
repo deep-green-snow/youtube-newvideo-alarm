@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 
 # YouTube API 정보
 API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # YouTube API Key
-
+youtube = build("youtube", "v3", developerKey=API_KEY)
 # YouTube Channel ID 
 CHANNELS = {
     "UCOB62fKRT7b73X7tRxMuN2g" : "박종훈의 지식한방",
