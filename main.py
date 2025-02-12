@@ -99,7 +99,7 @@ def filter_shorts(latest_videos):
                 filtered_id.append(item["id"])
 
         filtered_video = []
-        for video in latest_videos
+        for video in latest_videos:
             if video['video_id'] in filtered_id:
                 filtered_video.append(video)
 
