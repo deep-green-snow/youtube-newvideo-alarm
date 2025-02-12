@@ -2,4 +2,4 @@ flask
 requests
 gunicorn
 isodate
-googleapiclient
+google-api-python-client
