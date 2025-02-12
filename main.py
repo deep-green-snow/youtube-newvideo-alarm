@@ -5,9 +5,13 @@ from flask import Flask, jsonify, request
 import threading
 import atexit
 import os
+import isodate
+from googleapiclient.discovery import build
+
 
 # YouTube API 정보
 API_KEY = "AIzaSyAoiKv4A8AIOFg3WrAeCdOornFuR2m3fzs"  # YouTube API Key
+
 # YouTube Channel ID 
 CHANNELS = {
     "UCOB62fKRT7b73X7tRxMuN2g" : "박종훈의 지식한방",
@@ -40,11 +44,21 @@ app = Flask(__name__)
 
 def get_latest_video():
     global LATEST_VIDEO_ID
+
     latest_videos = []    
     for channel_id, channel_name in CHANNELS.items():
-        url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet,id&order=date&maxResults=1"
+        # url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet,id&order=date&maxResults=1"
         try:
-            response = requests.get(url).json()
+            # response = requests.get(url).json()
+            
+            request = youtube.search().list(
+                part="snippet,id",
+                channelId=channel_id,
+                order='date',
+                maxResults=1
+            )
+
+            response = request.execute()
         except Exception as e:
             print(f'[ERROR] {e} (channel : {channel_name})')
     
@@ -55,7 +69,7 @@ def get_latest_video():
             
             if(LATEST_VIDEO_ID[channel_id] is None or 
                (LATEST_VIDEO_ID[channel_id] is not None and LATEST_VIDEO_ID[channel_id] != video_id)):
-                print(f"[New Video Detected] {channel_name}")
+                print(f"[New Video Detected] {channel_name}")                
                 LATEST_VIDEO_ID[channel_id] = video_id # update latest video id
                 latest_videos.append({
                         'channel_id' : channel_id,
@@ -67,6 +81,32 @@ def get_latest_video():
                     })
                 
     return latest_videos
+
+def filter_shorts(latest_videos):
+    
+    try:
+        video_request  = youtube.videos().list(
+            part="contentDetails",
+            id=",".join([video['video_id'] for video in latest_videos])
+        )
+        video_response = video_request.execute()
+
+        filtered_id = []
+        for item in video_response["items"]:
+            duration = isodate.parse_duration(item["contentDetails"]["duration"]).total_seconds()
+            
+            if 60 <= duration:  # shorts X
+                filtered_id.append(item["id"])
+
+        filtered_video = []
+        for video in latest_videos
+            if video['video_id'] in filtered_id:
+                filtered_video.append(video)
+
+        return filtered_video
+
+    except Exception as e:
+        print(f'[ERROR] {e} (channel : {channel_name})')
 
 @app.route('/')
 def home():
@@ -82,7 +122,7 @@ def health():
 
 @app.route('/get_new_videos', methods=['GET'])
 def get_new_videos():
-    latest_viedos = get_latest_video()
+    latest_viedos = filter_shorts(get_latest_video())
     return jsonify({"data" : latest_viedos, "status": HTTPStatus.OK})
 
 if __name__ == "__main__":
