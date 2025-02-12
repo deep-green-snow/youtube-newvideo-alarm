@@ -7,6 +7,7 @@ import atexit
 import os
 import isodate
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 
 # YouTube API 정보
@@ -59,17 +60,20 @@ def get_latest_video():
             )
 
             response = request.execute()
-        except Exception as e:
-            print(f'[ERROR] {e} (channel : {channel_name})')
-    
+        except HttpError as e:
+            print(f"API(search) Error: {e} -> {channel_name}")        
+
         if "items" in response:
             
-            video_request  = youtube.videos().list(
-                part="contentDetails",
-                id=",".join([video['id'].get("videoId") for video in response["items"]])
-            )
+            try:
+                video_request  = youtube.videos().list(
+                    part="contentDetails",
+                    id=",".join([video['id'].get("videoId") for video in response["items"]])
+                )
 
-            video_response = video_request.execute()
+                video_response = video_request.execute()
+            except HttpError as e:
+                print(f"API(videos) Error: {e} -> {channel_name}")
 
             latest_idx = 0
             for i, item in enumerate(video_response["items"]):
