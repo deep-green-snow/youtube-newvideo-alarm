@@ -55,7 +55,7 @@ def get_latest_video():
                 part="snippet,id",
                 channelId=channel_id,
                 order='date',
-                maxResults=1
+                maxResults=3
             )
 
             response = request.execute()
@@ -63,9 +63,25 @@ def get_latest_video():
             print(f'[ERROR] {e} (channel : {channel_name})')
     
         if "items" in response:
-            video_id = response["items"][0]["id"].get("videoId")
-            video_title = response["items"][0]["snippet"].get("title")
-            publishTime = response["items"][0]["snippet"].get("publishTime")
+            
+            video_request  = youtube.videos().list(
+                part="contentDetails",
+                id=",".join([video['id'].get("videoId") for video in response["items"]])
+            )
+
+            video_response = video_request.execute()
+
+            latest_idx = 0
+            for i, item in enumerate(video_response["items"]):
+                duration = isodate.parse_duration(item["contentDetails"]["duration"]).total_seconds()
+                
+                if 60 < duration:  # not shorts
+                    latest_idx = i
+                    break
+
+            video_id = response["items"][latest_idx]["id"].get("videoId")
+            video_title = response["items"][latest_idx]["snippet"].get("title")
+            publishTime = response["items"][latest_idx]["snippet"].get("publishTime")
             
             if(LATEST_VIDEO_ID[channel_id] is None or 
                (LATEST_VIDEO_ID[channel_id] is not None and LATEST_VIDEO_ID[channel_id] != video_id)):
@@ -82,32 +98,6 @@ def get_latest_video():
                 
     return latest_videos
 
-def filter_shorts(latest_videos):
-    
-    try:
-        video_request  = youtube.videos().list(
-            part="contentDetails",
-            id=",".join([video['video_id'] for video in latest_videos])
-        )
-        video_response = video_request.execute()
-
-        filtered_id = []
-        for item in video_response["items"]:
-            duration = isodate.parse_duration(item["contentDetails"]["duration"]).total_seconds()
-            
-            if 60 <= duration:  # shorts X
-                filtered_id.append(item["id"])
-
-        filtered_video = []
-        for video in latest_videos:
-            if video['video_id'] in filtered_id:
-                filtered_video.append(video)
-
-        return filtered_video
-
-    except Exception as e:
-        print(f'[ERROR] {e} (channel : {channel_name})')
-
 @app.route('/')
 def home():
     return jsonify({"message": "RUNNING", "status" : HTTPStatus.OK})
@@ -122,8 +112,7 @@ def health():
 
 @app.route('/get_new_videos', methods=['GET'])
 def get_new_videos():
-    latest_viedos = filter_shorts(get_latest_video())
-    return jsonify({"data" : latest_viedos, "status": HTTPStatus.OK})
+    return jsonify({"data" : get_latest_video(), "status": HTTPStatus.OK})
 
 if __name__ == "__main__":
     # Flask 서버 실행
